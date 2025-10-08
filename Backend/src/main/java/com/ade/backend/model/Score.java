@@ -8,13 +8,14 @@ import java.util.UUID;
 @Entity
 @Table(name = "scores")
 public class Score {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "score_id")
     private UUID scoreId;
 
     @Column(name = "player_id", nullable = false)
-    private String playerId;
+    private UUID playerId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "player_id", insertable = false, updatable = false)
@@ -26,7 +27,7 @@ public class Score {
     @Column(name = "coins_collected")
     private Integer coinsCollected = 0;
 
-    @Column(name = "distance_tarvelled")
+    @Column(name = "distance_travelled")
     private Integer distanceTravelled = 0;
 
     @CreationTimestamp
@@ -37,7 +38,7 @@ public class Score {
     public Score() {}
 
     // Constructor with required fields
-    public Score(UUID playerId, Integer value, Integer coinsColected, Integer distanceTravelled) {
+    public Score(UUID playerId, Integer value, Integer coinsCollected, Integer distanceTravelled) {
         this.playerId = playerId;
         this.value = value;
         this.coinsCollected = coinsCollected;
@@ -46,6 +47,7 @@ public class Score {
 
     // Getters and Setters
     public UUID getScoreId() {
+        return scoreId;
     }
 
     public void setScoreId(UUID scoreId) {
@@ -100,4 +102,3 @@ public class Score {
         this.createdAt = createdAt;
     }
 }
-
