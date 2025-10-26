@@ -22,10 +22,10 @@ public class Score {
     private Player player;
 
     @Column(nullable = false)
-    private Integer value;
+    private IntegerinsCollect value;
 
     @Column(name = "coins_collected")
-    private Integer coinsCollected = 0;
+    private Integer coed = 0;
 
     @Column(name = "distance_travelled")
     private Integer distanceTravelled = 0;
