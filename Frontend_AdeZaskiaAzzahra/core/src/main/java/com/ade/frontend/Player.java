@@ -22,6 +22,7 @@ public class Player {
         this.velocity = new Vector2(baseSpeed, 0);
         this.collider = new Rectangle(position.x, position.y, width, height);
     }
+
     public void update(float delta, boolean isFlying) {
         updateDistanceAndSpeed(delta);
         applyGravity(delta);
@@ -45,5 +46,34 @@ public class Player {
         if (velocity.y > maxVerticalSpeed) velocity.y = maxVerticalSpeed;
         if (velocity.y < -maxVerticalSpeed) velocity.y = -maxVerticalSpeed;
     }
-    
+
+    private void fly(float delta) {
+        velocity.y += force * delta;
+    }
+
+    private void updateCollider() {
+        collider.setPosition(position.x, position.y);
+    }
+
+    public void checkBoundaries(Ground ground, float ceilingY) {
+        if (ground.isColliding(collider)) {
+            position.y = ground.getTopY();
+            velocity.y = 0;
+        }
+        if (position.y + height > ceilingY) {
+            position.y = ceilingY - height;
+            velocity.y = 0;
+        }
+    }
+
+    public void renderShape(ShapeRenderer shapeRenderer) {
+        shapeRenderer.setColor(0.2f, 0.6f, 1f, 1f);
+        shapeRenderer.rect(position.x, position.y, width, height);
+    }
+
+    public Vector2 getPosition() { return position; }
+    public float getWidth() { return width; }
+    public float getHeight() { return height; }
+    public Rectangle getCollider() { return collider; }
+    public float getDistanceTraveled() { return distanceTraveled / 10f; }
 }
