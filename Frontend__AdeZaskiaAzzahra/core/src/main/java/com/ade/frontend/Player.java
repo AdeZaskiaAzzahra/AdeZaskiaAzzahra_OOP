@@ -18,8 +18,12 @@ public class Player {
     private float baseSpeed = 300f;
     private float distanceTraveled = 0f;
 
+    private boolean isDead = false;
+    private Vector2 startPosition;
+
     public Player(Vector2 startPosition) {
-        position = new Vector2(startPosition);
+        this.startPosition = new Vector2(startPosition);
+        this.position = new Vector2(startPosition);
 
         collider = new Rectangle(
             position.x,
@@ -31,6 +35,7 @@ public class Player {
     }
 
     public void update(float delta, boolean isFlying) {
+        if (isDead) return;
         updateDistanceAndSpeed(delta);
         applyGravity(delta);
         if (isFlying) {
@@ -92,6 +97,21 @@ public class Player {
     public void renderShape(ShapeRenderer shapeRenderer) {
         shapeRenderer.setColor(0f, 1f, 0f, 1f);
         shapeRenderer.rect(position.x, position.y, width, height);
+    }
+    public void die(){
+        isDead = true;
+        velocity.set(0, 0);
+    }
+
+    public void reset(){
+        isDead = false;
+        position.set(startPosition);
+        velocity.set(baseSpeed, 0);
+        distanceTraveled = 0f;
+    }
+
+    public boolean isDead(){
+        return isDead;
     }
 
     // Getters

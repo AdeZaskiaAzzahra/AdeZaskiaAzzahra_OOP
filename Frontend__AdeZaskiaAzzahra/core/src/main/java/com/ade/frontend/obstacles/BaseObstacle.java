@@ -8,7 +8,7 @@ public abstract class BaseObstacle {
     protected Vector2 position;
     protected Rectangle collider;
     protected  float length;
-    protected  final float width = 10f;
+    protected final float WIDTH = 10f;
     protected  boolean active = false;
 
     public BaseObstacle(Vector2 startPosition, int length) {

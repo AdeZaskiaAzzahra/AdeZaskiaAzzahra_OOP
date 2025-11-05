@@ -1,34 +1,65 @@
 package com.ade.frontend;
 
-import com.badlogic.gdx.ApplicationAdapter;
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.ade.frontend.factories.ObstacleFactory;
+import com.ade.frontend.obstacles.BaseObstacle;
+import com.ade.frontend.obstacles.HomingMissile;
 
-public class Main extends ApplicationAdapter {
+import java.util.List;
+
+public class Main extends Game {
     private ShapeRenderer shapeRenderer;
+
+    // Game objects
     private Player player;
     private Ground ground;
     private GameManager gameManager;
+
+    // Deklarasi untuk obstacle dan sistem spawn
+    private ObstacleFactory obstacleFactory;
+    private float obstacleSpawnTimer;
+    private float lastObstacleSpawnX = 0f;
+
+    private static final float OBSTACLE_SPAWN_INTERVAL = 2.5f;
+    private static final int OBSTACLE_DENSITY = 1;
+    private static final float SPAWN_AHEAD_DISTANCE = 300f;
+    private static final float MIN_OBSTACLE_GAP = 200f;
+    private static final float OBSTACLE_CLUSTER_SPACING = 250f;
 
     // Camera system
     private OrthographicCamera camera;
     private float cameraOffset = 0.2f;
 
+    private int screenWidth;
+    private int screenHeight;
+    private int lastLoggedScore = -1;
+
     @Override
     public void create() {
         shapeRenderer = new ShapeRenderer();
-        gameManager = GameManager.getInstance();
+        this.gameManager = GameManager.getInstance();
+        screenWidth = Gdx.graphics.getWidth();
+        screenHeight = Gdx.graphics.getHeight();
 
         // Initialize camera
         camera = new OrthographicCamera();
-        camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera.setToOrtho(false, screenWidth, screenHeight);
 
-        player = new Player(new Vector2(100, Gdx.graphics.getHeight() / 2f));
+        player = new Player(new Vector2(100, screenHeight / 2f));
         ground = new Ground();
+
+        //Inisialisasi obstacleFactory dan obstacleSpawnTimer
+        obstacleFactory = new ObstacleFactory();
+        obstacleSpawnTimer = 0f;
+
         gameManager.startGame();
     }
 
@@ -36,49 +67,139 @@ public class Main extends ApplicationAdapter {
     public void render() {
         float delta = Gdx.graphics.getDeltaTime();
 
-        // Update game logic
         update(delta);
-
-        // Render
-        ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
-
-        // Set camera for rendering
-        shapeRenderer.setProjectionMatrix(camera.combined);
-
-        // Render ground (filled gray rectangle)
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        ground.renderShape(shapeRenderer);
-        player.renderShape(shapeRenderer);
-        shapeRenderer.end();
+        renderGame(shapeRenderer);
     }
 
     private void update(float delta) {
         boolean isFlying = Gdx.input.isKeyPressed(Input.Keys.SPACE);
+
+        // Restart game jika player mati dan menekan tombol SPACE
+        if (player.isDead()) {
+            if (isFlying) {
+                resetGame();
+            }
+            return;
+        }
+
         player.update(delta, isFlying);
         updateCamera(delta);
 
-        // Update ground position based on camera BEFORE checking boundaries
         ground.update(camera.position.x);
-        player.checkBoundaries(ground, Gdx.graphics.getHeight());
+        player.checkBoundaries(ground, screenHeight);
 
-        // Calculate distance-based score and log changes
-        int currentDistance = (int)player.getDistanceTraveled();
-        int previousDistance = (int)(gameManager.getScore());
+        // Update dan cek collision pada obstacles
+        updateObstacles(delta);
+        checkCollisions();
 
-        if (currentDistance != previousDistance) {
-            System.out.println("Distance: " + currentDistance + "m");
-            gameManager.setScore(currentDistance);
+        //  Calculate distance-based score and log changes
+        int currentScoreMeters = (int) player.getDistanceTraveled();
+        int previousScoreMeters = gameManager.getScore();
+
+        if (currentScoreMeters > previousScoreMeters) {
+            if (currentScoreMeters != lastLoggedScore) {
+                System.out.println("Distance: " + currentScoreMeters + "m");
+                lastLoggedScore = currentScoreMeters;
+            }
+            gameManager.setScore(currentScoreMeters);
         }
     }
 
+    private void renderGame(ShapeRenderer shapeRenderer) {
+        ScreenUtils.clear(Color.BLACK);
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // Render ground dan player
+        ground.renderShape(shapeRenderer);
+        player.renderShape(shapeRenderer);
+
+        // Render obstacles
+        shapeRenderer.setColor(Color.RED);
+        List<BaseObstacle> activeObstacles = obstacleFactory.getAllInUseObstacles();
+        for (BaseObstacle obstacle : activeObstacles) {
+            obstacle.render(shapeRenderer);
+        }
+
+        shapeRenderer.end();
+    }
+
     private void updateCamera(float delta) {
-        float cameraFocus = player.getPosition().x + Gdx.graphics.getWidth() * cameraOffset;
+        float cameraFocus = player.getPosition().x + screenWidth * cameraOffset;
         camera.position.x = cameraFocus;
         camera.update();
     }
 
+    // Method private void updateObstacles(float delta)
+    private void updateObstacles(float delta) {
+        obstacleSpawnTimer += delta;
+
+        if (obstacleSpawnTimer >= OBSTACLE_SPAWN_INTERVAL) {
+            spawnObstacle();
+            obstacleSpawnTimer = 0f;
+        }
+
+        float cameraLeftEdge = camera.position.x - screenWidth / 2f;
+
+        List<BaseObstacle> activeObstacles = obstacleFactory.getAllInUseObstacles();
+        for (BaseObstacle obstacle : activeObstacles) {
+            if (obstacle instanceof HomingMissile missile) {
+                missile.setTarget(player);
+                missile.update(delta);
+            }
+
+            if (obstacle.isOffScreenCamera(cameraLeftEdge)) {
+                obstacleFactory.releaseObstacle(obstacle);
+            }
+        }
+    }
+
+    private void spawnObstacle() {
+        float cameraRightEdge = camera.position.x + screenWidth / 2f;
+        float spawnAheadOfCamera = cameraRightEdge + SPAWN_AHEAD_DISTANCE;
+        float spawnAfterLastObstacle = lastObstacleSpawnX + MIN_OBSTACLE_GAP;
+
+        float baseSpawnX = Math.max(spawnAheadOfCamera, spawnAfterLastObstacle);
+
+        for (int i = 0; i < OBSTACLE_DENSITY; i++) {
+            float spawnX = baseSpawnX + i * OBSTACLE_CLUSTER_SPACING;
+
+            BaseObstacle obstacle = obstacleFactory.createRandomObstacle(
+                ground.getTopY(),
+                spawnX,
+                player.getHeight()
+            );
+
+            lastObstacleSpawnX = spawnX;
+        }
+    }
+
+    private void checkCollisions() {
+        Rectangle playerCollider = player.getCollider();
+        List<BaseObstacle> activeObstacles = obstacleFactory.getAllInUseObstacles();
+
+        for (BaseObstacle obstacle : activeObstacles) {
+            if (obstacle.isColliding(playerCollider)) {
+                System.out.println("GAME OVER! Tekan [SPACE] untuk restart.");
+                player.die();
+                return;
+            }
+        }
+    }
+    private void resetGame() {
+        player.reset();
+        obstacleFactory.releaseAllObstacles();
+        obstacleSpawnTimer = 0f;
+        lastObstacleSpawnX = 0f;
+        camera.position.x = screenWidth / 2f;
+        camera.update();
+        gameManager.setScore(0);
+        lastLoggedScore = -1;
+        System.out.println("Game reset!");
+    }
     @Override
     public void dispose() {
         shapeRenderer.dispose();
+        obstacleFactory.releaseAllObstacles();
     }
 }
