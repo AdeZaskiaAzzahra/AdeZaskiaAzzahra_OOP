@@ -1,4 +1,4 @@
-package com.ad.frontend;
+package com.ade.frontend;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
