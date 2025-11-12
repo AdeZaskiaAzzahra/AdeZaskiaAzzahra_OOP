@@ -79,6 +79,12 @@ public class Player {
         }
     }
 
+    public void fly() {
+        if (!isDead) {
+           velocity.y = Math.min(velocity.y + 300f, maxVerticalSpeed);
+       }
+   }
+
     private void updateCollider() {
         collider.setPosition(position.x, position.y);
     }

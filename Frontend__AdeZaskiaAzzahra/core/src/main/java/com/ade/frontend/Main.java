@@ -5,31 +5,43 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.ade.frontend.commands.Command;
+import com.ade.frontend.commands.JetpackCommand;
+import com.ade.frontend.commands.RestartCommand;
 import com.ade.frontend.factories.ObstacleFactory;
+import com.ade.frontend.observers.ScoreUIObserver;
 import com.ade.frontend.obstacles.BaseObstacle;
 import com.ade.frontend.obstacles.HomingMissile;
 
 public class Main extends Game {
     private ShapeRenderer shapeRenderer;
+    private SpriteBatch spriteBatch;
 
     // Game objects
     private Player player;
     private Ground ground;
     private GameManager gameManager;
 
-    // Obstacle spawning
+    // Background
+    private Background background;
+    private Command jetpackCommand;
+    private Command restartCommand;
+    private ScoreUIObserver scoreUIObserver;
+
+    // Obstacle spawaning
     private ObstacleFactory obstacleFactory;
     private float obstacleSpawnTimer;
     private float lastObstacleSpawnX = 0f;
     private static final float OBSTACLE_SPAWN_INTERVAL = 2.5f;
-    private static final int OBSTACLE_DENSITY = 1; // Number of obstacles per spawn
-    private static final float SPAWN_AHEAD_DISTANCE = 300f; // Distance ahead of camera to spawn
-    private static final float MIN_OBSTACLE_GAP = 200f; // Minimum gap between obstacle clusters
-    private static final float OBSTACLE_CLUSTER_SPACING = 250f; // Spacing within a cluster
+    private static final int OBSTACLE_DENSITY = 1;
+    private static final float SPAWN_AHEAD_DISTANCE = 300f;
+    private static final float MIN_OBSTACLE_GAP = 200f;
+    private static final float OBSTACLE_CLUSTER_SPACING = 250f;
 
     // Camera system
     private OrthographicCamera camera;
@@ -56,7 +68,20 @@ public class Main extends Game {
         player = new Player(new Vector2(100, screenHeight / 2f));
         ground = new Ground();
 
-        // Initialize obstacle factory
+        // Inisialisasi objek jetpackCommand dan restartCommand
+        jetpackCommand = new JetpackCommand(player);
+        restartCommand = new RestartCommand(player, gameManager);
+
+        // Inisialisasi objek scoreUIObserver
+        scoreUIObserver = new ScoreUIObserver();
+
+        // Daftarkan scoreUIObserver ke gameManager sebagai observer
+        gameManager.addObserver(scoreUIObserver);
+
+        // Inisialisasi objek background
+        background = new Background();
+
+        //  Initialize obstacle factory
         obstacleFactory = new ObstacleFactory();
         obstacleSpawnTimer = 0f;
 
@@ -72,21 +97,23 @@ public class Main extends Game {
     }
 
     private void update(float delta) {
-        boolean isFlying = Gdx.input.isKeyPressed(Input.Keys.SPACE);
-        // Check if player is dead and wants to restart
+        if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
+            jetpackCommand.execute();
+        }
+
         if (player.isDead()) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-                resetGame();
+                restartCommand.execute();
             }
             return;
         }
 
-        player.update(delta, isFlying);
+        player.update(delta, false);
         updateCamera(delta);
 
-        // Update ground position based on camera BEFORE checking boundaries
+        background.update(camera.position.x);
+
         ground.update(camera.position.x);
-        player.checkBoundaries(ground, screenHeight);
 
         // Update obstacles
         updateObstacles(delta);
@@ -95,11 +122,10 @@ public class Main extends Game {
         checkCollisions();
 
         // Calculate distance-based score and log changes (print every meter)
-        int currentScoreMeters = (int)player.getDistanceTraveled();
+        int currentScoreMeters = (int) player.getDistanceTraveled();
         int previousScoreMeters = gameManager.getScore();
 
         if (currentScoreMeters > previousScoreMeters) {
-            // Only print if this is a new meter milestone
             if (currentScoreMeters != lastLoggedScore) {
                 System.out.println("Distance: " + currentScoreMeters + "m");
                 lastLoggedScore = currentScoreMeters;
@@ -111,10 +137,21 @@ public class Main extends Game {
     private void renderGame(ShapeRenderer shapeRenderer) {
         ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
 
-        // Set camera for rendering
-        shapeRenderer.setProjectionMatrix(camera.combined);
+        //  Inisialisasi spriteBatch jika masih null
+        if (spriteBatch == null) {
+            spriteBatch = new SpriteBatch();
+        }
 
-        // Batch all rendering into single begin/end block for performance
+        //  Atur projection matrix untuk spriteBatch agar sesuai dengan kamera
+        spriteBatch.setProjectionMatrix(camera.combined);
+
+        //  Gambar background menggunakan spriteBatch (di antara begin() dan end())
+        spriteBatch.begin();
+        background.render(spriteBatch);
+        spriteBatch.end();
+
+        //  // Render game objects using ShapeRenderer
+        shapeRenderer.setProjectionMatrix(camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
         // Render ground
@@ -130,6 +167,9 @@ public class Main extends Game {
         }
 
         shapeRenderer.end();
+
+        //  Render score UI menggunakan scoreUIObserver, gunakan skor dari gameManager
+        scoreUIObserver.render(gameManager.getScore());
     }
 
     private void updateCamera(float delta) {
@@ -195,31 +235,16 @@ public class Main extends Game {
         }
     }
 
-    private void resetGame() {
-        // Reset player
-        player.reset();
-
-        // Clear all obstacles
-        obstacleFactory.releaseAllObstacles();
-
-        // Reset timers
-        obstacleSpawnTimer = 0f;
-        lastObstacleSpawnX = 0f;
-
-        // Reset camera
-        camera.position.x = player.getPosition().x - screenWidth * cameraOffset;
-        camera.update();
-
-        // Reset score
-        gameManager.setScore(0);
-        lastLoggedScore = -1; // Reset logging tracker
-
-        System.out.println("Game reset!");
-    }
-
     @Override
     public void dispose() {
         shapeRenderer.dispose();
+        if (spriteBatch != null) {
+            spriteBatch.dispose();
+        }
+
         obstacleFactory.releaseAllObstacles();
+
+        if (scoreUIObserver != null) scoreUIObserver.dispose();
+        if (background != null) background.dispose();
     }
 }
