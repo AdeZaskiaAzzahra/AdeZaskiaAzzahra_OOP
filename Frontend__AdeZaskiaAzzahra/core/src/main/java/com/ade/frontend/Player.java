@@ -18,12 +18,13 @@ public class Player {
     private float baseSpeed = 300f;
     private float distanceTraveled = 0f;
 
+    // Death system
     private boolean isDead = false;
     private Vector2 startPosition;
 
     public Player(Vector2 startPosition) {
         this.startPosition = new Vector2(startPosition);
-        this.position = new Vector2(startPosition);
+        position = new Vector2(startPosition);
 
         collider = new Rectangle(
             position.x,
@@ -35,13 +36,14 @@ public class Player {
     }
 
     public void update(float delta, boolean isFlying) {
-        if (isDead) return;
-        updateDistanceAndSpeed(delta);
-        applyGravity(delta);
-        if (isFlying) {
-            fly(delta);
+        if (!isDead) {
+            updateDistanceAndSpeed(delta);
+            applyGravity(delta);
+            if (isFlying) {
+                fly(delta);
+            }
+            updatePosition(delta);
         }
-        updatePosition(delta);
         updateCollider();
     }
 
@@ -72,7 +74,9 @@ public class Player {
     }
 
     private void fly(float delta) {
-        velocity.y += force * delta;
+        if (!isDead) {
+            velocity.y += force * delta;
+        }
     }
 
     private void updateCollider() {
@@ -98,20 +102,18 @@ public class Player {
         shapeRenderer.setColor(0f, 1f, 0f, 1f);
         shapeRenderer.rect(position.x, position.y, width, height);
     }
-    public void die(){
+
+    public void die() {
         isDead = true;
-        velocity.set(0, 0);
+        velocity.x = 0;
+        velocity.y = 0;
     }
 
-    public void reset(){
+    public void reset() {
         isDead = false;
         position.set(startPosition);
         velocity.set(baseSpeed, 0);
         distanceTraveled = 0f;
-    }
-
-    public boolean isDead(){
-        return isDead;
     }
 
     // Getters
@@ -134,5 +136,8 @@ public class Player {
     public float getDistanceTraveled() {
         return distanceTraveled / 10f;
     }
-}
 
+    public boolean isDead() {
+        return isDead;
+    }
+}

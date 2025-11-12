@@ -7,66 +7,58 @@ import com.ade.frontend.Player;
 
 public class HomingMissile extends BaseObstacle {
     private Player target;
-   private Vector2 velocity;
-   private final float speed = 200f;
-   private final float width = 40f;
-   private final float height = 20f;
+    private Vector2 velocity;
+    private float speed = 200f;
+    private float width = 40f;
+    private float height = 20f;
 
-   public HomingMissile(Vector2 startPosition) {
-       super(startPosition, 0);
-       velocity = new Vector2();
-   }
+    public HomingMissile(Vector2 startPosition) {
+        super(startPosition,0);
+        this.velocity = new Vector2();
+    }
 
-   @Override
-   public void initialize(Vector2 startPosition, int length) {
-       super.initialize(startPosition, length);
-       velocity.set(0, 0);
-   }
+    @Override
+    public void initialize(Vector2 startPosition, int length) {
+        super.initialize(startPosition, length);
+        this.velocity.set(0, 0);
+    }
 
-   public void setTarget(Player target) {
-       this.target = target;
-   }
+    public void setTarget(Player target) {
+        this.target = target;
+    }
 
-   public boolean isTargetingPlayer() {
-       if (target == null) return false;
+    public boolean isTargetingPlayer() {
+        if (target == null) return false;
+        float playerCenterX = target.getPosition().x + target.getWidth() / 2f;
+        float missileCenterX = position.x + width / 2f;
+        return playerCenterX <= missileCenterX;
+    }
 
-       float missileCenterY = position.y + height / 2f;
-       float targetCenterY = target.getPosition().y + target.getHeight() / 2f;
+    public void update(float delta) {
+        if (target == null || !active) return;
 
-       // Jika posisi tengah target lebih besar dari posisi tengah misil,
-       // berarti misil belum melewati target
-       return targetCenterY > missileCenterY;
-   }
+        if (isTargetingPlayer()) {
+            Vector2 targetPosition = target.getPosition(); // Ambil Posisi Player
+            velocity.set(targetPosition).sub(position).nor().scl(speed); // Mengatur velocity untuk mendekati player
+        }
 
-   public void update(float delta) {
-       if (!active || target == null) return;
+        // Always move with current velocity
+        position.add(velocity.x * delta, velocity.y * delta);
+        updateCollider();
+    }
 
-       if (isTargetingPlayer()) {
-           Vector2 targetPosition = new Vector2(target.getPosition());
-           velocity.set(targetPosition).sub(position).nor().scl(speed);
-           position.x += velocity.x * delta;
-           position.y += velocity.y * delta;
-           updateCollider();
-       }
-   }
+    @Override
+    protected void updateCollider() {
+        collider = new Rectangle(position.x, position.y, width, height);
+    }
 
-   @Override
-   protected void updateCollider() {
-       collider = new Rectangle(position.x, position.y, width, height);
-   }
+    @Override
+    protected void drawShape(ShapeRenderer shapeRenderer) {
+        shapeRenderer.rect(position.x, position.y, width, height);
+    }
 
-   @Override
-   protected void drawShape(ShapeRenderer shapeRenderer) {
-       shapeRenderer.rect(position.x, position.y, width, height);
-   }
-
-   @Override
-   public float getRenderWidth() {
-       return width;
-   }
-
-   @Override
-   public float getRenderHeight() {
-       return height;
-   }
+    @Override
+    protected float getRenderWidth() {
+        return width;
+    }
 }

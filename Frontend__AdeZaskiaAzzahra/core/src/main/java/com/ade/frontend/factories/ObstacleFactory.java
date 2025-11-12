@@ -4,17 +4,18 @@ import java.util.*;
 import com.ade.frontend.obstacles.BaseObstacle;
 
 public class ObstacleFactory {
+
+    /** Factory Method implementor */
     public interface ObstacleCreator {
         BaseObstacle create(float groundTopY, float spawnX, float playerHeight, Random rng);
-
         void release(BaseObstacle obstacle);
         void releaseAll();
         List<? extends BaseObstacle> getInUse();
         boolean supports(BaseObstacle obstacle);
-
         String getName();
     }
 
+    /** Weighted creator for probability-based spawning */
     private static class WeightedCreator {
         ObstacleCreator creator;
         int weight;
@@ -30,6 +31,8 @@ public class ObstacleFactory {
     private int totalWeight = 0;
 
     public ObstacleFactory() {
+        // Register creators with weights for spawn probability
+        // Vertical: 40%, Horizontal: 40%, Homing Missile: 20%
         register(new VerticalLaserCreator(), 2);
         register(new HorizontalLaserCreator(), 2);
         register(new HomingMissileCreator(), 1);
@@ -40,14 +43,15 @@ public class ObstacleFactory {
         totalWeight += weight;
     }
 
+    /** Factory Method using weighted random selection */
     public BaseObstacle createRandomObstacle(float groundTopY, float spawnX, float playerHeight) {
         if (weightedCreators.isEmpty()) {
             throw new IllegalStateException("No obstacle creators registered");
         }
+
         ObstacleCreator creator = selectWeightedCreator();
         return creator.create(groundTopY, spawnX, playerHeight, random);
     }
-
 
     private ObstacleCreator selectWeightedCreator() {
         int randomValue = random.nextInt(totalWeight);
@@ -93,6 +97,6 @@ public class ObstacleFactory {
         }
         return names;
     }
+}
 
-    }
 
