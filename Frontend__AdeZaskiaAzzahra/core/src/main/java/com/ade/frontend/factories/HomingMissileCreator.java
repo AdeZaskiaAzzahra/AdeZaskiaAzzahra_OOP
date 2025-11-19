@@ -8,7 +8,7 @@ import com.ade.frontend.pools.HomingMissilePool;
 import java.util.List;
 import java.util.Random;
 
-class HomingMissileCreator implements ObstacleFactory.ObstacleCreator {
+public class HomingMissileCreator implements ObstacleFactory.ObstacleCreator {
     private final HomingMissilePool pool = new HomingMissilePool();
 
     @Override
