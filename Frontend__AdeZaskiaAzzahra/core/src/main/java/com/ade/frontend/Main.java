@@ -1,4 +1,4 @@
-ackage com.ade.frontend; // Ganti dengan nama package kalian
+package com.ade.frontend;
 
 
 import com.badlogic.gdx.Game;
