@@ -11,7 +11,6 @@ import com.badlogic.gdx.utils.JsonValue;
 public class GameManager {
     private static GameManager instance;
 
-    // Ganti score menjadi scoreManager
     private ScoreManager scoreManager;
     private boolean gameActive;
 
@@ -19,7 +18,6 @@ public class GameManager {
     private String currentPlayerId = null;
     private int coinsCollected = 0;
 
-    // Constructor private untuk Singleton
     private GameManager() {
         scoreManager = new ScoreManager();
         gameActive = false;
@@ -28,7 +26,6 @@ public class GameManager {
     }
 
 
-    // Singleton Pattern: hanya satu instance GameManager
     public static GameManager getInstance() {
         if (instance == null) {
             instance = new GameManager();
@@ -77,18 +74,15 @@ public class GameManager {
        return scoreManager.getScore();
    }
 
-   // === Instruksi No.12: Getter coins ===
        public int getCoins() {
        return coinsCollected;
    }
 
-   // === Instruksi No.10: addCoin() ===
        public void addCoin() {
        coinsCollected++;
        Gdx.app.log("COIN", "COIN COLLECTED! Total: " + coinsCollected);
    }
 
-   // === Instruksi No.9: endGame() ===
        public void endGame() {
 
        if (currentPlayerId == null) {
@@ -119,7 +113,6 @@ public class GameManager {
        );
    }
 
-   // Observer Pattern
        public void addObserver(Observer observer) {
        scoreManager.addObserver(observer);
    }

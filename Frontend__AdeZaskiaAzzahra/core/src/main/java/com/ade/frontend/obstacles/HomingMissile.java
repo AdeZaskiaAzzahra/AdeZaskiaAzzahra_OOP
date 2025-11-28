@@ -1,26 +1,39 @@
 package com.ade.frontend.obstacles;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.ade.frontend.Player;
 
 public class HomingMissile extends BaseObstacle {
+
     private Player target;
     private Vector2 velocity;
+
     private float speed = 200f;
     private float width = 40f;
     private float height = 20f;
 
+    private TextureRegion texture;
+    private float rotation = 0f;
+
     public HomingMissile(Vector2 startPosition) {
-        super(startPosition,0);
+        super(startPosition, 0);
         this.velocity = new Vector2();
+
+        Texture img = new Texture(Gdx.files.internal("missile.png"));
+        this.texture = new TextureRegion(img);
     }
 
     @Override
     public void initialize(Vector2 startPosition, int length) {
         super.initialize(startPosition, length);
         this.velocity.set(0, 0);
+        this.rotation = 0f;
     }
 
     public void setTarget(Player target) {
@@ -29,21 +42,29 @@ public class HomingMissile extends BaseObstacle {
 
     public boolean isTargetingPlayer() {
         if (target == null) return false;
-        float playerCenterX = target.getPosition().x + target.getWidth() / 2f;
-        float missileCenterX = position.x + width / 2f;
-        return playerCenterX <= missileCenterX;
+
+        return (target.getPosition().x + target.getWidth() / 2f)
+            <= (position.x + width / 2f);
     }
 
     public void update(float delta) {
         if (target == null || !active) return;
 
         if (isTargetingPlayer()) {
-            Vector2 targetPosition = target.getPosition(); // Ambil Posisi Player
-            velocity.set(targetPosition).sub(position).nor().scl(speed); // Mengatur velocity untuk mendekati player
+
+            Vector2 toPlayer = new Vector2(
+                target.getPosition().x - position.x,
+                target.getPosition().y - position.y
+            ).nor();
+
+            velocity.set(toPlayer.x * speed, toPlayer.y * speed);
+
+            rotation = toPlayer.angleDeg();
+
         }
 
-        // Always move with current velocity
         position.add(velocity.x * delta, velocity.y * delta);
+
         updateCollider();
     }
 
@@ -60,5 +81,18 @@ public class HomingMissile extends BaseObstacle {
     @Override
     protected float getRenderWidth() {
         return width;
+    }
+
+    public void render(SpriteBatch batch) {
+        if (!active) return;
+
+        batch.draw(
+            texture,
+            position.x, position.y,
+            width / 2f, height / 2f,
+            width, height,
+            1f, 1f,
+            rotation
+        );
     }
 }

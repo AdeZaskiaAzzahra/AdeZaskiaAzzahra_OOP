@@ -1,6 +1,7 @@
 package com.ade.frontend;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
@@ -12,7 +13,6 @@ public class Coin {
     private float radius = 15f;
     private boolean active;
 
-    // animasi bobbing
     private float bobTime = 0f;
 
     public Coin(Vector2 startPosition) {
@@ -31,17 +31,24 @@ public class Coin {
 
         bobTime += delta * 4f;
 
-        // Update collider position
         collider.setPosition(position.x - radius, position.y - radius);
     }
 
-    public void render(ShapeRenderer renderer) {
+
+    public void renderShape(ShapeRenderer renderer) {
         if (!active) return;
 
-        float bobOffset = (float)Math.sin(bobTime) * 5f;
+        float bobOffset = (float) Math.sin(bobTime) * 5f;
 
         renderer.setColor(Color.YELLOW);
         renderer.circle(position.x, position.y + bobOffset, radius);
+    }
+
+    public boolean isOffScreenCamera(float cameraLeftEdge) {
+        return (position.x + radius) < (cameraLeftEdge - 50);
+    }
+
+    public void render(SpriteBatch batch) {
     }
 
     public boolean isColliding(Rectangle playerCollider) {
